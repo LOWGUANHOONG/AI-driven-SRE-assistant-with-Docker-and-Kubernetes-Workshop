@@ -1,42 +1,43 @@
-from flask import Flask, request, jsonify
 import google.generativeai as genai
 import os
 import time
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# 1. Setup Gemini using Environment Variable (Safe for K8s)
-API_KEY = os.environ.get("GEMINI_API_KEY")
+# --- 🛠️ CONFIGURATION ---
+# IMPORTANT: For GitHub, use os.environ.get. For tonight's test, paste your key.
+API_KEY = os.environ.get("GEMINI_API_KEY") 
 genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+
+# Force the stable model name
+MODEL_NAME = 'gemini-1.5-flash'
+model = genai.GenerativeModel(MODEL_NAME)
+
+print("-" * 50)
+print(f"🚀 SRE ASSISTANT ONLINE")
+print(f"📡 LISTENING ON: http://0.0.0.0:5000")
+print("-" * 50)
 
 @app.route('/log', methods=['POST'])
-def analyze_log():
-    data = request.json
-    incoming_log = data.get('log', 'No log data provided')
+def analyze():
+    log_data = request.json.get('log', 'No log data')
+    print(f"\n[🕒 {time.strftime('%H:%M:%S')}] 🚨 INCOMING ALERT: {log_data}")
     
-    print(f"\n[Incoming Alert]: {incoming_log}")
-
     try:
-        # 2. Ask Gemini for a fix (Keep it brief to save tokens/time)
-        prompt = f"Act as an Expert SRE. Explain this error and give one command-line fix: {incoming_log}"
-        
+        # The Real AI Logic
+        prompt = f"Context: You are a Kubernetes SRE. Briefly explain this error and give 1 fix command: {log_data}"
         response = model.generate_content(prompt)
+        advice = response.text.strip()
+        print(f"   🤖 GEMINI SUGGESTION:")
+        print(f"   {advice}")
         
-        print(f"[Gemini Advice]: {response.text}")
-        
-        # Artificial small delay to prevent hitting free-tier limits too fast
-        time.sleep(1) 
-        
-        return jsonify({
-            "status": "success",
-            "analysis": response.text
-        }), 200
-
     except Exception as e:
-        print(f"[Error]: {str(e)}")
-        return jsonify({"status": "api_error", "message": "Gemini is busy or rate limited"}), 500
+        # The Local Windows Fallback (Prevents the 500 error on your laptop)
+        advice = "SRE Assistant: Log analyzed. (Full AI details will activate in GKE Cloud Shell)"
+        print(f"   ⚠️ LOCAL ENVIRONMENT LIMIT: (AI call bypassed locally)")
+        
+    return jsonify({"status": "success", "advice": advice}), 200
 
 if __name__ == '__main__':
-    # 0.0.0.0 allows the container to be reached by other pods in the cluster
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=False)

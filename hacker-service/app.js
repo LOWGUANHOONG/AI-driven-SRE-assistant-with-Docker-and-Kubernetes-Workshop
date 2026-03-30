@@ -8,16 +8,24 @@ const logs = [
     "ALERT: Suspicious file upload detected in /tmp directory"
 ];
 
-console.log("Hacker Service Started. Sending logs to http://sre-assistant/log...");
+// In the workshop, this URL will change to your Kubernetes Service Name
+const SRE_URL = "http://localhost:5000/log";
+
+console.log(`\n--------------------------------------`);
+console.log(`🥷  HACKER SERVICE STARTED`);
+console.log(`📡 TARGET: ${SRE_URL}`);
+console.log(`--------------------------------------\n`);
 
 setInterval(async () => {
     const randomLog = logs[Math.floor(Math.random() * logs.length)];
 
     try {
-        // 'sre-assistant' is the K8s Service name we will define in our YAML
-        await axios.post('http://sre-assistant/log', { log: randomLog });
-        console.log(`[Sent Success]: ${randomLog}`);
+        const response = await axios.post(SRE_URL, { log: randomLog });
+        console.log(`[✅ Sent Success]: ${randomLog}`);
+        console.log(`[🤖 SRE Response]: ${response.data.advice}\n`);
     } catch (err) {
-        console.error("[Connection Error]: SRE Assistant is offline or K8s Service not ready.");
+        // More descriptive error logging
+        const status = err.response ? err.response.status : "OFFLINE";
+        console.error(`[❌ Connection Error]: SRE Assistant is ${status}`);
     }
-}, 5000);
+}, 15000); // 15 seconds keeps us under the Gemini Free Tier limit
